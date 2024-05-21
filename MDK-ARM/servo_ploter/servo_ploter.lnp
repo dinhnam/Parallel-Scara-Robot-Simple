@@ -1,0 +1,25 @@
+--cpu Cortex-M0
+"servo_ploter\startup_stm32f030x6.o"
+"servo_ploter\main.o"
+"servo_ploter\stm32f0xx_it.o"
+"servo_ploter\stm32f0xx_hal_msp.o"
+"servo_ploter\stm32f0xx_hal_tim.o"
+"servo_ploter\stm32f0xx_hal_tim_ex.o"
+"servo_ploter\stm32f0xx_hal_rcc.o"
+"servo_ploter\stm32f0xx_hal_rcc_ex.o"
+"servo_ploter\stm32f0xx_hal.o"
+"servo_ploter\stm32f0xx_hal_i2c.o"
+"servo_ploter\stm32f0xx_hal_i2c_ex.o"
+"servo_ploter\stm32f0xx_hal_gpio.o"
+"servo_ploter\stm32f0xx_hal_dma.o"
+"servo_ploter\stm32f0xx_hal_cortex.o"
+"servo_ploter\stm32f0xx_hal_pwr.o"
+"servo_ploter\stm32f0xx_hal_pwr_ex.o"
+"servo_ploter\stm32f0xx_hal_flash.o"
+"servo_ploter\stm32f0xx_hal_flash_ex.o"
+"servo_ploter\stm32f0xx_hal_exti.o"
+"servo_ploter\system_stm32f0xx.o"
+--strict --scatter "servo_ploter\servo_ploter.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "servo_ploter.map" -o servo_ploter\servo_ploter.axf

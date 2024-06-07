@@ -40,6 +40,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
@@ -50,6 +51,7 @@ TIM_HandleTypeDef htim3;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -63,14 +65,14 @@ static void MX_TIM3_Init(void);
 
 #define SERVO1_OFFSET				(float)-3
 #define SERVO2_OFFSET				(float)3
-#define TIMER_ROTATE				10		 // ms /1degree		
+#define TIME_ROTATE					6		 // ms /1degree		
 
 #define PI 											(float)3.141592654
 #define H												(float)12 //mm
 #define R												(float)50 //mm
 #define L												(float)50 //mm
 #define M 											(float)20	//mm
-#define ANGLE_C									(float)PI*2/3
+#define ANGLE_C									(float)2*PI/3
 	
 typedef struct
 {
@@ -81,8 +83,8 @@ typedef struct
 }SERVO_STRUCT;
 
 SERVO_STRUCT servo_1, servo_2, servo_3;
-uint8_t pen_stt = 0;
-
+uint8_t pen_status = 0;
+int speed = TIME_ROTATE;
 
 void PWM_SetFrequency(TIM_TypeDef * tim, int freq)
 {
@@ -144,7 +146,6 @@ void servo_init()
 	servo_1.tim_channel = TIM_CHANNEL_2;
 	servo_1.angle_offset = SERVO1_OFFSET;
 	
-	
 	servo_2.pwm_tim = TIM3;
 	servo_2.tim_channel = TIM_CHANNEL_1;
 	servo_2.angle_offset = SERVO2_OFFSET;
@@ -172,8 +173,6 @@ uint8_t angle_check(float angle1, float angle2)
 {
 	if(angle1 == NAN) return 0;
 	if(angle2 == NAN) return 0;
-	if(angle1 > PI/4 ) return 0;
-	if(angle2 < -PI/4 ) return 0;
 	float x1 = R*cos(angle1);
 	float y1 = R*sin(angle1);
 	float x2 = R*cos(angle2);
@@ -199,14 +198,14 @@ void move_XY(float x, float y)
 	float Yc = Ya + L*sin(e1+e2);
 	float d2 = dist(Xc, Yc, 0, H);
 	float b = acos( (R*R+ d2*d2 - L*L)/(2*R*d2));
-	float b2 = atan(Yc/Xc);
+	float b2 = atan((Yc-H)/Xc);
 	float s2 = b + b2;
 	if( angle_check(s1,s2) == 1 )
 	{		
 		float angle_new = s1*180/PI;
 		float angle_2_new = s2*180/PI;
-		int time_rotate1 = TIMER_ROTATE*fabs(angle_new - servo_1.anlge);
-		int time_rotate2 = TIMER_ROTATE*fabs(angle_2_new - servo_2.anlge);
+		int time_rotate1 = speed*fabs(angle_new - servo_1.anlge);
+		int time_rotate2 = speed*fabs(angle_2_new - servo_2.anlge);
 		servo_rotate(&servo_1, angle_new);
 		servo_rotate(&servo_2, angle_2_new);
 		if(time_rotate1 >  time_rotate2)
@@ -222,7 +221,7 @@ void move_XY(float x, float y)
 
 void pen_ctrl(uint8_t en)
 {
-	pen_stt = en;
+	pen_status = en;
 	if(en == 1)
 	{
 		servo_rotate(&servo_3, -20);
@@ -234,7 +233,7 @@ void pen_ctrl(uint8_t en)
 	HAL_Delay(200);
 }
 
-void draw_line(int x1, int y1, int x2, int y2)
+void draw_line(float x1, float y1, float x2, float y2)
 {
 	float x, y, Dx, Dy;
 	float x_div, y_div;
@@ -278,7 +277,7 @@ void drawCircle(float x0, float y0, float r)
 	pen_ctrl(0);
 	move_XY(x1, y1);
 	pen_ctrl(1);
-	for(int i=0; i<= 400; i++)
+	for(int i=0; i<= 360; i++)
 	{
 		a+=div;
 		float x2 = x0 + r*cos(a);
@@ -289,19 +288,9 @@ void drawCircle(float x0, float y0, float r)
 	}
 }
 
-uint8_t bufferXY[1000][2] = {{2,3},{2,4},{2,5},{2,6},{2,7},{2,8},{2,9},{2,11},{2,12},{2,13},{2,14},{2,15},{2,16},
-{2,17},{2,18},{2,19},{10,3},{10,4},{10,5},{10,6},{10,8},{10,9},{10,10},{10,11},{10,12},{10,13},{10,14},{10,15},
-{10,16},{10,17},{10,18},{10,19},{10,20},{3,11},{4,11},{5,11},{6,11},{7,11},{8,11},{9,11},{8,11},{15,10},{16,10},
-{17,10},{18,10},{19,9},{20,9},{20,8},{21,7},{21,6},{22,6},{22,5},{22,4},{22,3},{21,3},{20,3},{19,3},{19,4},{18,4},
-{18,5},{17,5},{17,6},{16,6},{16,7},{15,8},{15,9},{15,10},{15,11},{15,12},{15,13},{15,14},{15,15},{15,16},{16,17},
-{16,18},{17,18},{18,19},{19,19},{20,19},{21,19},{27,3},{27,5},{27,7},{27,9},{27,10},{27,11},{27,12},{27,13},{27,14},
-{27,15},{27,16},{27,17},{27,18},{27,19},{28,19},{29,19},{30,19},{31,19},{32,19},{32,18},{36,3},{36,4},{36,6},{36,7},
-{36,8},{36,10},{36,11},{36,12},{36,13},{36,14},{36,15},{36,16},{36,17},{36,18},{35,18},{35,19},{36,19},{37,19},{38,19},
-{39,19},{40,19},{41,19},{48,4},{47,4},{47,5},{46,5},{45,6},{44,7},{44,8},{44,9},{44,10},{44,11},{44,12},{44,13},{44,14},
-{45,14},{45,15},{45,16},{46,17},{46,18},{47,18},{47,19},{48,19},{50,20},{51,20},{52,20},{53,20},{53,19},{54,19},{54,18},
-{55,18},{55,17},{56,16},{56,15},{56,14},{56,13},{56,12},{56,11},{56,10},{56,9},{55,9},{55,8},{55,7},{54,6},{53,5},{53,4},
-{52,4},{51,4},{50,4},{49,4},{48,4},{47,4},{47,5}};
-
+int buffer_lenght = 235;
+uint8_t bufferXY[1000][2] = {{7,19},{8,19},{8,18},{9,18},{9,17},{10,17},{10,16},{11,15},{11,14},{12,14},{12,13},{13,12},{14,11},{15,10},{16,10},{16,9},{17,9},{17,8},{18,8},{18,7},{19,7},{19,6},{20,6},{20,5},{21,5},{21,4},{21,5},{22,5},{22,6},{22,7},{22,8},{23,9},{23,10},{23,11},{24,11},{24,12},{24,13},{25,13},{25,14},{25,15},{26,15},{26,16},{26,17},{26,18},{27,18},{27,19},{26,18},{25,18},{24,17},{23,17},{22,17},{22,16},{21,16},{20,16},{19,16},{19,15},{18,15},{17,15},{17,14},{16,14},{15,14},{14,14},{14,13},{13,13},{12,13},{12,12},{11,12},{10,12},{9,11},{8,11},{7,11},{7,10},{6,10},{7,10},{9,10},{11,10},{12,10},{13,10},{14,10},{15,9},{16,9},{17,9},{18,9},{19,9},{20,9},{21,9},{22,9},{23,9},{24,9},{25,9},{26,8},{28,8},{29,8},{30,8},{30,9},{29,9},{27,10},{26,11},{25,11},{24,12},{23,12},{22,12},{21,13},{20,13},{19,13},{19,14},{18,14},{17,14},{16,15},{15,15},{14,16},{13,16},{13,17},{12,17},{11,17},{11,18},{10,18},{9,18},{9,19},{8,19},{1,23},{1,22},{1,21},{1,20},{1,19},{1,18},{1,17},{1,16},{1,15},{1,14},{1,13},{1,12},{1,11},{1,10},{1,9},{1,8},{1,7},{1,6},{1,5},{1,4},{1,3},{1,2},{1,1},{2,1},{3,1},{5,1},{6,1},{7,1},{8,1},{9,1},{10,1},{11,1},{12,1},{13,1},{14,1},{15,1},{16,1},{17,1},{18,1},{19,1},{20,1},{21,1},{22,1},{23,1},{24,1},{25,1},{26,1},{27,1},{28,1},{29,1},{30,1},{31,1},{32,1},{34,1},{36,1},{37,1},{38,1},{38,2},{38,3},{38,4},{37,5},{37,6},{37,7},{37,8},{37,9},{37,10},{37,11},{37,12},{37,13},{37,14},{37,15},{37,16},{37,17},{37,18},{37,19},{37,20},{37,21},{37,22},{37,23},{36,23},{35,23},{33,23},{31,23},{29,23},{28,23},{27,23},{26,23},{25,23},{24,23},{23,23},{22,23},{21,23},{20,23},{19,23},{18,23},{17,23},{16,23},{15,23},{14,23},{13,23},{12,23},{11,23},{10,23},{9,23},{8,23},{8,22},{7,22},{6,22},{5,22},{4,22},{3,22},{3,23},{2,23},{1,23},{1,22}};
+	
 void drawBuffer(int x_offset, int y_offset, int size)
 {
 	pen_ctrl(0);
@@ -318,7 +307,7 @@ void drawBuffer(int x_offset, int y_offset, int size)
 		y2 = bufferXY[i][0]+y_offset;
 		if(dist(x1, y1, x2, y2) <= 4)
 		{
-			if(pen_stt == 0)
+			if(pen_status == 0)
 			{
 				pen_ctrl(1);
 			}
@@ -333,6 +322,12 @@ void drawBuffer(int x_offset, int y_offset, int size)
 	}
 	pen_ctrl(0);
 }
+
+void servo_setRotateSpeed(int s)
+{
+	speed = s;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -364,29 +359,29 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM3_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 	servo_init();
 	HAL_Delay(2000);
-  /* USER CODE END 2 */
-	
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 //test
-//	int x = 80, y = - 10;
+//	int x = 90, y = - 10;
 //	for(int i=0; i<10; i++)
 //	{
-//		drawRect(x,y,15,30);
+//		drawRect(x,y,20,20);
 //		x+=1;
 //		y+=1;
 //	}
-//	drawRect(80,-10,25,40);
-//drawCircle(90,0,10);
-	drawBuffer(75,-10, 173);
+//	drawRect(90,-10,25,40);
+  //drawCircle(110,0,15);
+//	drawBuffer(90,0, buffer_lenght);
+//	servo_setRotateSpeed(10);
+//	draw_line(100, 20, 130, 0); 
   while (1)
   {
-		
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -429,6 +424,52 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 47;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 65535;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+
 }
 
 /**
